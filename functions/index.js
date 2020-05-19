@@ -32,7 +32,7 @@ app.get('/scream/:screamId/like', auth, likeScream);
 app.get('/scream/:screamId/unlike', auth, unlikeScream);
 app.delete('/scream/:screamId', auth, deleteScream);
 app.post('/scream/:screamId/edit', auth, editScream);
-app.get('/screams/newsest/page/:numberPage', getScreamByPage);
+app.get('/screams/:type/page/:numberPage', getScreamByPage);
 app.get('/number-screams', getNumberScreams);
 //Users route
 app.post('/signup', signup)

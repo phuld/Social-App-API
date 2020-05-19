@@ -1,4 +1,4 @@
-const  {db} = require('../utils/admin');
+const { db } = require('../utils/admin');
 
 exports.getAllScreams = (request, response) => {
     db
@@ -12,9 +12,9 @@ exports.getAllScreams = (request, response) => {
                     screamId: doc.id,
                     userHandle: doc.data().userHandle,
                     body: doc.data().body,
-                    createdAt: doc.data().createdAt, 
-                    likeCount: doc.data().likeCount, 
-                    commentCount: doc.data().commentCount, 
+                    createdAt: doc.data().createdAt,
+                    likeCount: doc.data().likeCount,
+                    commentCount: doc.data().commentCount,
                     userImage: doc.data().userImage
                 })
             })
@@ -26,7 +26,7 @@ exports.getAllScreams = (request, response) => {
 }
 
 exports.postOneScream = (request, response) => {
-    if(request.body.body.trim() === '') {
+    if (request.body.body.trim() === '') {
         return response.status(400).json({
             body: "Body must not be empty"
         })
@@ -35,7 +35,7 @@ exports.postOneScream = (request, response) => {
         body: request.body.body,
         userHandle: request.user.handle,
         userImage: request.user.imageUrl,
-        likeCount: 0, 
+        likeCount: 0,
         commentCount: 0,
         createdAt: new Date().toISOString()
     }
@@ -59,7 +59,7 @@ exports.getOneScream = (request, response) => {
     db.doc(`/screams/${request.params.screamId}`)
         .get()
         .then((doc) => {
-            if(!doc.exists) {
+            if (!doc.exists) {
                 return response.status(404).json({
                     error: 'Scream not found'
                 })
@@ -85,35 +85,51 @@ exports.getOneScream = (request, response) => {
 }
 
 exports.commentOnScream = (request, response) => {
-    if(request.body.body.trim() === '') {
+    if (request.body.body.trim() === '') {
         return response.status(400).json({
             body: "Must not be empty"
         })
     }
     const newComment = {
-        body: request.body.body, 
-        screamId: request.params.screamId, 
-        userHandle: request.user.handle, 
-        createdAt: new Date().toISOString(), 
+        body: request.body.body,
+        screamId: request.params.screamId,
+        userHandle: request.user.handle,
+        createdAt: new Date().toISOString(),
         userImage: request.user.imageUrl
     }
+
+    let screamData={};
 
     db.doc(`/screams/${request.params.screamId}`)
         .get()
         .then((doc) => {
-            if(!doc.exists){
+            if (!doc.exists) {
                 return response.status(404).json({
                     error: 'Scream not found'
                 })
             }
-            return db.doc(`/screams/${request.params.screamId}`).update({commentCount: doc.data().commentCount + 1})
+            screamData = doc.data();
+            screamData.screamId = doc.id;
+            screamData.commentCount ++;
+            return db.doc(`/screams/${request.params.screamId}`).update({ commentCount: doc.data().commentCount + 1 })
         })
         .then(() => {
             return db.collection('comments')
                 .add(newComment)
         })
         .then(() => {
-            return response.json(newComment)
+            // return response.json(newComment)
+            screamData.comments = [];
+            return db.collection('comments')
+                .where('screamId',"==", request.params.screamId)
+                .orderBy('createdAt', 'desc')
+                .get()
+        })
+        .then(doc => {
+            doc.forEach(data => {
+                screamData.comments.push(data.data())
+            })
+            return response.json(screamData)
         })
         .catch(error => {
             console.error(error);
@@ -126,12 +142,12 @@ exports.likeScream = (request, response) => {
     db.doc(`/screams/${request.params.screamId}`)
         .get()
         .then((doc) => {
-            if(!doc.exists) {
+            if (!doc.exists) {
                 return response.status(404).json({
                     error: 'Scream not found'
                 })
             }
-           
+
             screamData = doc.data();
             screamData.screamId = doc.id;
             return db.collection('likes')
@@ -141,21 +157,21 @@ exports.likeScream = (request, response) => {
                 .get()
         })
         .then((data) => {
-            if(!data.empty) {
+            if (!data.empty) {
                 return response.json({
                     message: 'Scream already liked'
                 })
-            }else {
+            } else {
                 return db.collection('likes')
                     .add({
-                        screamId: request.params.screamId, 
+                        screamId: request.params.screamId,
                         userHandle: request.user.handle
                     })
             }
         })
         .then(() => {
             screamData.likeCount++;
-            return db.doc(`/screams/${request.params.screamId}`).update({likeCount: screamData.likeCount})
+            return db.doc(`/screams/${request.params.screamId}`).update({ likeCount: screamData.likeCount })
         })
         .then(() => {
             return response.json(screamData)
@@ -171,7 +187,7 @@ exports.unlikeScream = (request, response) => {
     db.doc(`/screams/${request.params.screamId}`)
         .get()
         .then(doc => {
-            if(!doc.exists) {
+            if (!doc.exists) {
                 return response.status(404).json({
                     error: 'Scream not found'
                 })
@@ -185,17 +201,17 @@ exports.unlikeScream = (request, response) => {
                 .get()
         })
         .then(data => {
-            if(data.empty) {
+            if (data.empty) {
                 return response.json({
                     message: 'Scream not like'
                 })
-            }else {
+            } else {
                 return db.doc(`/likes/${data.docs[0].id}`).delete()
             }
         })
         .then(() => {
             screamData.likeCount--;
-            db.doc(`/screams/${request.params.screamId}`).update({likeCount: screamData.likeCount})
+            db.doc(`/screams/${request.params.screamId}`).update({ likeCount: screamData.likeCount })
         })
         .then(() => {
             return response.json(screamData)
@@ -210,12 +226,12 @@ exports.deleteScream = (request, response) => {
     db.doc(`/screams/${request.params.screamId}`)
         .get()
         .then(doc => {
-            if(!doc.exists) {
+            if (!doc.exists) {
                 return response.status(404).json({
                     error: 'Scream not found'
                 })
             }
-            if(doc.data().userHandle !== request.user.handle) {
+            if (doc.data().userHandle !== request.user.handle) {
                 return response.status(403).json({
                     error: 'Unauthorized'
                 })
@@ -234,7 +250,7 @@ exports.deleteScream = (request, response) => {
 }
 
 exports.editScream = (request, response) => {
-    if(request.body.body.trim() === '') {
+    if (request.body.body.trim() === '') {
         return response.status(400).json({
             body: 'Body must not empty'
         })
@@ -243,12 +259,12 @@ exports.editScream = (request, response) => {
     db.doc(`/screams/${request.params.screamId}`)
         .get()
         .then(doc => {
-            if(!doc.exists) {
+            if (!doc.exists) {
                 return response.status(404).json({
                     user: 'Scream not found'
                 })
             }
-            if(request.user.handle !== doc.data().userHandle) {
+            if (request.user.handle !== doc.data().userHandle) {
                 return response.status(403).json({
                     user: 'Unauthorized'
                 })
@@ -273,30 +289,46 @@ exports.editScream = (request, response) => {
 exports.getScreamByPage = (request, response) => {
     let numberPage = 1;
     let screams = [];
-    if(request.params.numberPage) {
+    let type = '';
+    const types = ['newest', 'most-comments', 'most-likes'];
+    console.log(types.indexOf(request.params.type));
+    if (types.indexOf(request.params.type) == -1) {
+        return response.status(400).json({
+            body: 'URL not found, please check again.'
+        })
+    }
+    if (request.params.type === "newest") {
+        type = "createdAt";
+    } else if (request.params.type === "most-comments") {
+        type = "commentCount";
+    } else type = "likeCount";
+
+    if (request.params.numberPage) {
         numberPage = request.params.numberPage
     }
     db.collection('screams')
-        .orderBy('createdAt', 'desc')
-        .limit(numberPage*10)
+        .orderBy(type, 'desc')
+        .limit(numberPage * 10)
         .get()
         .then(doc => {
-            const firstScream = doc.docs[doc.docs.length-10];
+            const firstScream = doc.docs[doc.docs.length - 10];
+            // const startAt = type ==="createdAt" ? firstScream.createdAt : type === "commentCount" ? firstScream.commentCount : firstScream.likeCount;
+            // console.log(startAt);
             return db.collection('screams')
-                .orderBy('createdAt', 'desc')
-                .startAt(firstScream.data().createdAt)
+                .orderBy(type, 'desc')
+                .startAt(firstScream)
                 .limit(10)
                 .get()
         })
         .then(doc => {
             doc.forEach(data => {
                 screams.push({
-                    screamId: data.id, 
+                    screamId: data.id,
                     userHandle: data.data().userHandle,
                     body: data.data().body,
-                    createdAt: data.data().createdAt, 
-                    likeCount: data.data().likeCount, 
-                    commentCount: data.data().commentCount, 
+                    createdAt: data.data().createdAt,
+                    likeCount: data.data().likeCount,
+                    commentCount: data.data().commentCount,
                     userImage: data.data().userImage
                 })
             })
