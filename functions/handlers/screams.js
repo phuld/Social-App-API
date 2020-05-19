@@ -232,3 +232,92 @@ exports.deleteScream = (request, response) => {
             return response.status(500).json(error)
         })
 }
+
+exports.editScream = (request, response) => {
+    if(request.body.body.trim() === '') {
+        return response.status(400).json({
+            body: 'Body must not empty'
+        })
+    }
+    let screamData = {};
+    db.doc(`/screams/${request.params.screamId}`)
+        .get()
+        .then(doc => {
+            if(!doc.exists) {
+                return response.status(404).json({
+                    user: 'Scream not found'
+                })
+            }
+            if(request.user.handle !== doc.data().userHandle) {
+                return response.status(403).json({
+                    user: 'Unauthorized'
+                })
+            }
+            screamData = doc.data();
+            screamData.screamId = doc.id;
+            screamData.body = request.body.body.trim()
+            return db.doc(`/screams/${request.params.screamId}`)
+                .update({
+                    body: request.body.body.trim()
+                })
+        })
+        .then(() => {
+            return response.status(200).json(screamData)
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error);
+        })
+}
+
+exports.getScreamByPage = (request, response) => {
+    let numberPage = 1;
+    let screams = [];
+    if(request.params.numberPage) {
+        numberPage = request.params.numberPage
+    }
+    db.collection('screams')
+        .orderBy('createdAt', 'desc')
+        .limit(numberPage*10)
+        .get()
+        .then(doc => {
+            const firstScream = doc.docs[doc.docs.length-10];
+            return db.collection('screams')
+                .orderBy('createdAt', 'desc')
+                .startAt(firstScream.data().createdAt)
+                .limit(10)
+                .get()
+        })
+        .then(doc => {
+            doc.forEach(data => {
+                screams.push({
+                    screamId: data.id, 
+                    userHandle: data.data().userHandle,
+                    body: data.data().body,
+                    createdAt: data.data().createdAt, 
+                    likeCount: data.data().likeCount, 
+                    commentCount: data.data().commentCount, 
+                    userImage: data.data().userImage
+                })
+            })
+            return response.json(screams)
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error);
+        })
+}
+
+exports.getNumberScreams = (request, response) => {
+    db.collection('screams')
+        .get()
+        .then(doc => {
+            return response.json({
+                number: doc.docs.length
+            })
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error)
+        })
+}
