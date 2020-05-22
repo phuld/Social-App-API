@@ -10,7 +10,9 @@ const {
     deleteScream,
     editScream, 
     getScreamByPage, 
-    getNumberScreams
+    getNumberScreams, 
+    getScreamsByUser, 
+    getNumberScreamsbyUser
 } = require('./handlers/screams');
 const { signup, 
         login, 
@@ -34,6 +36,8 @@ app.delete('/scream/:screamId', auth, deleteScream);
 app.post('/scream/:screamId/edit', auth, editScream);
 app.get('/screams/:type/page/:numberPage', getScreamByPage);
 app.get('/number-screams', getNumberScreams);
+app.get('/:userHandle/number-screams', getNumberScreamsbyUser);
+app.get('/user/:userHandle/screams/:currentType/page/:currentPage', getScreamsByUser)
 //Users route
 app.post('/signup', signup)
 app.post('/login', login)

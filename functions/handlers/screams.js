@@ -98,7 +98,7 @@ exports.commentOnScream = (request, response) => {
         userImage: request.user.imageUrl
     }
 
-    let screamData={};
+    let screamData = {};
 
     db.doc(`/screams/${request.params.screamId}`)
         .get()
@@ -110,7 +110,7 @@ exports.commentOnScream = (request, response) => {
             }
             screamData = doc.data();
             screamData.screamId = doc.id;
-            screamData.commentCount ++;
+            screamData.commentCount++;
             return db.doc(`/screams/${request.params.screamId}`).update({ commentCount: doc.data().commentCount + 1 })
         })
         .then(() => {
@@ -121,7 +121,7 @@ exports.commentOnScream = (request, response) => {
             // return response.json(newComment)
             screamData.comments = [];
             return db.collection('comments')
-                .where('screamId',"==", request.params.screamId)
+                .where('screamId', "==", request.params.screamId)
                 .orderBy('createdAt', 'desc')
                 .get()
         })
@@ -174,6 +174,22 @@ exports.likeScream = (request, response) => {
             return db.doc(`/screams/${request.params.screamId}`).update({ likeCount: screamData.likeCount })
         })
         .then(() => {
+            screamData.comments = [];
+            return db.collection('comments')
+                .where('screamId', '==', request.params.screamId)
+                .orderBy('createdAt', 'desc')
+                .get()
+        })
+        .then((doc) => {
+            doc.forEach(data => {
+                screamData.comments.push({
+                    body: data.data().body,
+                    createdAt: data.data().createdAt,
+                    screamId: data.data().screamId,
+                    userHandle: data.data().userHandle,
+                    userImage: data.data().userImage
+                })
+            })
             return response.json(screamData)
         })
         .catch((error) => {
@@ -214,6 +230,22 @@ exports.unlikeScream = (request, response) => {
             db.doc(`/screams/${request.params.screamId}`).update({ likeCount: screamData.likeCount })
         })
         .then(() => {
+            screamData.comments = [];
+            return db.collection('comments')
+                .where('screamId', '==', request.params.screamId)
+                .orderBy('createdAt', 'desc')
+                .get()
+        })
+        .then((doc) => {
+            doc.forEach(data => {
+                screamData.comments.push({
+                    body: data.data().body,
+                    createdAt: data.data().createdAt,
+                    screamId: data.data().screamId,
+                    userHandle: data.data().userHandle,
+                    userImage: data.data().userImage
+                })
+            })
             return response.json(screamData)
         })
         .catch((error) => {
@@ -351,5 +383,76 @@ exports.getNumberScreams = (request, response) => {
         .catch(error => {
             console.error(error);
             return response.status(500).json(error)
+        })
+}
+exports.getScreamsByUser = (request, response) => {
+    const userHandle = request.params.userHandle;
+    const currentType = request.params.currentType;
+    let type='';
+    if(currentType === "newest") {
+        type = "createdAt"
+    }else if(currentType === "most-comments") {
+        type = "commentCount"
+    }else {
+        type = "likeCount"
+    }
+    const currentPage = request.params.currentPage;
+    let screams = [];
+    db.doc(`/users/${userHandle}`)
+        .get()
+        .then((doc) => {
+            if (!doc.exists) {
+                return response.status(404).json({
+                    handle: 'User not found'
+                })
+            }
+            return db.collection('screams')
+                .where('userHandle', "==", userHandle)
+                .orderBy(type, "desc")
+                .limit(currentPage * 10)
+                .get()
+        })
+        .then(data => {
+            if(data.docs.length === 0) return response.json(screams);
+            const first = data.docs[(data.docs.length - 10) > 0 ? data.docs.length - 10 : 0];
+            return db.collection('screams')
+                .where('userHandle', '==', userHandle)
+                .orderBy(type, 'desc')
+                .startAt(first)
+                .limit(10)
+                .get()
+        })
+        .then(doc => {
+            doc.forEach(data => {
+                screams.push({
+                    screamId: data.id,
+                    userHandle: data.data().userHandle,
+                    body: data.data().body,
+                    createdAt: data.data().createdAt,
+                    likeCount: data.data().likeCount,
+                    commentCount: data.data().commentCount,
+                    userImage: data.data().userImage
+                })
+            })
+            return response.json(screams)
+        })
+        .catch(error => {
+            console.error(error)
+            return response.status(500).json(error)
+        })
+}
+
+exports.getNumberScreamsbyUser = (request, response) => {
+    db.collection('screams')
+        .where('userHandle', '==', request.params.userHandle)
+        .get()
+        .then(doc => {
+            return response.json({
+                number: doc.docs.length
+            })
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error);
         })
 }

@@ -148,7 +148,6 @@ exports.uploadImage = (request, response) => {
 
 exports.addUserDetails = (request, response) => {
     const userDetails = addUserDetails(request.body);
-    
     db.doc(`/users/${request.user.handle}`)
         .update(userDetails)
         .then(() => {
@@ -208,27 +207,8 @@ exports.getUserDetails = (request, response) => {
         .get()
         .then((doc) => {
             if(doc.exists) {
-                userData.user = doc.data();
-                return db.collection('screams')
-                    .where('userHandle', '==', request.params.handle)
-                    .orderBy('createdAt', 'desc')
-                    .get()
+                userData = doc.data();
             }
-        })
-        .then(data => {
-            userData.screams = [];
-            data.forEach(doc => {
-                userData.screams.push({
-                    screamId: doc.id, 
-                    body: doc.data().body, 
-                    userHandle: doc.data().userHandle, 
-                    userImage: doc.data().userImage, 
-                    likeCount: doc.data().likeCount, 
-                    commentCount: doc.data().commentCount, 
-                    createdAt: doc.data().createdAt, 
-
-                })
-            })
             return response.json(userData);
         })
         .catch(error => {
