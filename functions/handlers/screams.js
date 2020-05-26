@@ -456,3 +456,33 @@ exports.getNumberScreamsbyUser = (request, response) => {
             return response.status(500).json(error);
         })
 }
+
+exports.blockScream = (request, response) => {
+    const blockData = {
+        screamId: request.params.screamId, 
+        userHandle: request.user.handle
+    }
+
+    db.collection('blocks')
+        .where('screamId', '==', request.params.screamId)
+        .where('userHandle', '==', request.user.handle)
+        .get()
+        .then(doc => {
+            if(doc.docs.length > 0) {
+                return response.status(400).json({
+                    block: 'You blocked this scream before, please check again.'
+                })
+            }
+            return db.collection('blocks')
+                .add(blockData)
+        })
+        .then((data) => {
+            const block = blockData;
+            block.blockId = data.id;
+            return response.status(200).json(block)
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error);
+        })
+}

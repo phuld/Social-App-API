@@ -1,5 +1,7 @@
 const functions = require('firebase-functions');
 const app = require('express')();
+const cors = require('cors');
+app.use(cors());
 const { 
     getAllScreams, 
     postOneScream, 
@@ -12,7 +14,8 @@ const {
     getScreamByPage, 
     getNumberScreams, 
     getScreamsByUser, 
-    getNumberScreamsbyUser
+    getNumberScreamsbyUser, 
+    blockScream
 } = require('./handlers/screams');
 const { signup, 
         login, 
@@ -38,6 +41,8 @@ app.get('/screams/:type/page/:numberPage', getScreamByPage);
 app.get('/number-screams', getNumberScreams);
 app.get('/:userHandle/number-screams', getNumberScreamsbyUser);
 app.get('/user/:userHandle/screams/:currentType/page/:currentPage', getScreamsByUser)
+app.get('/scream/:screamId/block', auth, blockScream);
+
 //Users route
 app.post('/signup', signup)
 app.post('/login', login)

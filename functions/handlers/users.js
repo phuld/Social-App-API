@@ -193,6 +193,19 @@ exports.getAuthenticatedUser = (request, response) => {
                     notificationId: doc.id
                 })
             })
+            return db.collection('blocks')
+                .where('userHandle', "==", request.user.handle)
+                .get()
+            
+        })
+        .then(doc => {
+            userData.blocks = []
+            doc.forEach(data => {
+                userData.blocks.push({
+                    blockId: data.id, 
+                    screamId: data.data().screamId
+                })
+            })
             return response.json(userData)
         })
         .catch((error) => {
