@@ -14,7 +14,7 @@ exports.signup = (request, response) => {
 
     const { valid, errors } = validateSignup(newUser);
     if (!valid) {
-        return response.status(400).json( errors )
+        return response.status(400).json(errors)
     }
     let token, userId;
     db.doc(`/users/${newUser.handle}`)
@@ -103,7 +103,7 @@ exports.uploadImage = (request, response) => {
     let imageTobeUploaded = {};
 
     busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
-        if(mimetype !== 'image/png' && mimetype !== 'image/jpeg') {
+        if (mimetype !== 'image/png' && mimetype !== 'image/jpeg') {
             return response.status(400).json({
                 error: 'Wrong file type submmited'
             })
@@ -114,37 +114,37 @@ exports.uploadImage = (request, response) => {
         imageName = `${String(new Date().getTime())}.${imageExtension}`;
         const filepath = path.join(os.tmpdir(), imageName);
         imageTobeUploaded = {
-            filepath, 
+            filepath,
             mimetype
         }
         file.pipe(fs.createWriteStream(filepath))
     });
     busboy.on('finish', () => {
         admin.storage().bucket(`${firebaseConfig.storageBucket}`).upload(imageTobeUploaded.filepath, {
-            resumable: false, 
+            resumable: false,
             metadata: {
                 metadata: {
                     contentType: imageTobeUploaded.mimetype
                 }
             }
         })
-        .then(() => {
-            const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${imageName}?alt=media`;
-            return db.doc(`/users/${request.user.handle}`).update({ imageUrl });
-        })
-        .then(() => {
-            return response.json({
-                message: 'Image uploaded successfully.'
+            .then(() => {
+                const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${imageName}?alt=media`;
+                return db.doc(`/users/${request.user.handle}`).update({ imageUrl });
             })
-        })
-        .catch((error) => {
-            console.error(error);
-            return response.status(500).json(error)
-        })
-        
+            .then(() => {
+                return response.json({
+                    message: 'Image uploaded successfully.'
+                })
+            })
+            .catch((error) => {
+                console.error(error);
+                return response.status(500).json(error)
+            })
+
     })
     busboy.end(request.rawBody);
-} 
+}
 
 exports.addUserDetails = (request, response) => {
     const userDetails = addUserDetails(request.body);
@@ -184,33 +184,45 @@ exports.getAuthenticatedUser = (request, response) => {
             userData.notifications = [];
             data.forEach(doc => {
                 userData.notifications.push({
-                    recipient: doc.data().recipient, 
-                    sender: doc.data().sender, 
-                    screamId: doc.data().screamId, 
-                    type: doc.data().type, 
-                    read: doc.data().read, 
-                    createdAt: doc.data().createdAt, 
+                    recipient: doc.data().recipient,
+                    sender: doc.data().sender,
+                    screamId: doc.data().screamId,
+                    type: doc.data().type,
+                    read: doc.data().read,
+                    createdAt: doc.data().createdAt,
                     notificationId: doc.id
                 })
             })
             return db.collection('blocks')
                 .where('userHandle', "==", request.user.handle)
                 .get()
-            
+
         })
         .then(doc => {
             userData.blocks = []
             doc.forEach(data => {
                 userData.blocks.push({
-                    blockId: data.id, 
+                    blockId: data.id,
                     screamId: data.data().screamId
+                })
+            })
+            return db.collection('follows')
+                .where('follower', '==', request.user.handle)
+                .get()
+        })
+        .then(doc => {
+            userData.follows = [];
+            doc.forEach(data => {
+                userData.follows.push({
+                    owner: data.data().owner,
+                    followId: data.id
                 })
             })
             return response.json(userData)
         })
         .catch((error) => {
             console.error(error);
-            return response.status(500).json({error})
+            return response.status(500).json(error)
         })
 }
 
@@ -219,7 +231,7 @@ exports.getUserDetails = (request, response) => {
     db.doc(`/users/${request.params.handle}`)
         .get()
         .then((doc) => {
-            if(doc.exists) {
+            if (doc.exists) {
                 userData = doc.data();
             }
             return response.json(userData);
@@ -234,12 +246,70 @@ exports.markNotiRead = (request, response) => {
     let batch = db.batch();
     request.body.forEach(notiId => {
         const notification = db.doc(`/notifications/${notiId}`);
-        batch.update(notification, {read: true});
+        batch.update(notification, { read: true });
     });
     batch.commit()
         .then(() => {
             return response.json({
                 message: 'Notifications marked read'
+            })
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error);
+        })
+}
+
+exports.followUser = (request, response) => {
+    const followData = {
+        follower: request.user.handle,
+        owner: request.params.userHandle
+    }
+    db.collection('follows')
+        .where('follower', '==', followData.follower)
+        .where('owner', '==', followData.owner)
+        .get()
+        .then(doc => {
+            if (doc.docs.length > 0) {
+                return response.status(400).json({
+                    follow: 'You followed this account'
+                })
+            }
+            return db.collection('follows')
+                .add(followData)
+        })
+        .then(doc => {
+            const follow = followData;
+            follow.followId = doc.id;
+            return response.json(follow)
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error);
+        })
+}
+
+exports.unfollowUser = (request, response) => {
+    const followData = {
+        follower: request.user.handle,
+        owner: request.params.userHandle
+    }
+    let owner = '';
+    db.collection('follows')
+        .where('follower', '==', followData.follower)
+        .where('owner', '==', followData.owner)
+        .get()
+        .then(doc => {
+            if (doc.docs.length ===  0) {
+                return response.status(400).json({
+                    follow: "You don't follow this account"
+                })
+            }
+            return db.doc(`/follows/${doc.docs[0].id}`).delete()
+        })
+        .then(() => {
+            return response.json({
+                message: 'Unfollow successfully.'
             })
         })
         .catch(error => {

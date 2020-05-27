@@ -486,3 +486,23 @@ exports.blockScream = (request, response) => {
             return response.status(500).json(error);
         })
 }
+
+exports.getScreamsByFollowing = (request, response) => {
+    const userHandle = request.params.userHandle;
+    const following = []
+    db.collection('follows')
+        .where('follower', '==', userHandle)
+        .get()
+        .then(doc => {
+            doc.forEach(data => {
+                following.push(data.data().owner)
+            })
+        })
+        .then(() => {
+            return response.json(following)
+        })
+        .catch(error => {
+            console.error(error);
+            return response.status(500).json(error)
+        })
+}

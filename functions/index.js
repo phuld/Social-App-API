@@ -15,7 +15,8 @@ const {
     getNumberScreams, 
     getScreamsByUser, 
     getNumberScreamsbyUser, 
-    blockScream
+    blockScream, 
+    getScreamsByFollowing
 } = require('./handlers/screams');
 const { signup, 
         login, 
@@ -23,7 +24,9 @@ const { signup,
         addUserDetails, 
         getAuthenticatedUser, 
         getUserDetails, 
-        markNotiRead 
+        markNotiRead, 
+        followUser, 
+        unfollowUser
     } = require('./handlers/users');
 const auth = require('./utils/auth');
 const { db } = require('./utils/admin');
@@ -42,6 +45,7 @@ app.get('/number-screams', getNumberScreams);
 app.get('/:userHandle/number-screams', getNumberScreamsbyUser);
 app.get('/user/:userHandle/screams/:currentType/page/:currentPage', getScreamsByUser)
 app.get('/scream/:screamId/block', auth, blockScream);
+app.get('/screams/following', auth, getScreamsByFollowing);
 
 //Users route
 app.post('/signup', signup)
@@ -51,6 +55,8 @@ app.post('/user', auth, addUserDetails);
 app.get('/user', auth, getAuthenticatedUser);
 app.get('/user/:handle', getUserDetails);
 app.post('/notifications', auth, markNotiRead);
+app.get('/user/:userHandle/follow', auth, followUser);
+app.get('/user/:userHandle/unfollow', auth, unfollowUser);
 
 // domain.com/api/
 exports.api = functions.https.onRequest(app);
